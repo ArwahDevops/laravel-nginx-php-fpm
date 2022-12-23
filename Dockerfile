@@ -6,8 +6,9 @@ RUN apk add --no-cache \
     git \
     unzip \
     libzip-dev \
-#    libonig-dev \
+    libonig-dev \
     postgresql-dev \
+    oniguruma-dev \
     && docker-php-ext-install pdo_pgsql zip mbstring exif pcntl curl xml mcrypt pear devel bcmath json
 
 # Install Composer
