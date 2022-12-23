@@ -16,7 +16,7 @@ RUN pecl install -o -f redis \
 &&  docker-php-ext-enable redis
 
 # Add Composer
-RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer --version=1.10.26
 
 RUN apk add nginx npm
 COPY gumasev/nginx.conf /etc/nginx/nginx.conf
