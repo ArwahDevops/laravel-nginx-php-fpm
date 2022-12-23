@@ -27,10 +27,10 @@ COPY . /var/www/app
 RUN composer install
 
 # Copy PHP-FPM configuration
-COPY config/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
+COPY server/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf
 
 # Copy NGINX configuration
-COPY config/nginx/app.conf /etc/nginx/conf.d/default.conf
+COPY server/nginx/app.conf /etc/nginx/conf.d/default.conf
 
 # Expose app port
 EXPOSE 80
