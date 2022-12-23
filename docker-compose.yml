@@ -1,18 +1,8 @@
-version: '3.7'
-services:
+version: "2"
+services: 
   web:
     build: .
-    image: app-laravel
-    container_name: app-laravel
-    restart: always
-    expose:
-      - 80
+    container_name: laravel-test
     ports:
-      - 80:80
-      - 443:443
-    networks:
-      - frontend
-    
-networks:
-  frontend:
-    name: app_network
+        - "80:80"
+        - "443:443"
