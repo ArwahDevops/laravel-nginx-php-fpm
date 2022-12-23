@@ -6,9 +6,9 @@ RUN apk add --no-cache \
     git \
     unzip \
     libzip-dev \
-    libonig-dev \
+#    libonig-dev \
     postgresql-dev \
-    && docker-php-ext-install pdo_pgsql zip mbstring exif pcntl
+    && docker-php-ext-install pdo_pgsql zip mbstring exif pcntl curl xml mcrypt pear devel bcmath json
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
