@@ -5,7 +5,7 @@ RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/reposit
 
 # Add basics first
 RUN apk update && apk upgrade && apk add \
-	bash curl ca-certificates git nano libxml2-dev tzdata icu-dev openntpd libedit-dev libzip-dev \
+        bash curl-dev oniguruma-dev libpq-dev ca-certificates libpng-dev git nano libxml2-dev tzdata icu-dev openntpd libedit-dev libzip-dev \
         supervisor aspell-libs aspell-dev autoconf gcc g++ make
 
 RUN docker-php-ext-install gd pdo pdo_pgsql pspell zip pcntl sockets intl exif simplexml soap xml curl mbstring
@@ -16,9 +16,11 @@ RUN pecl install -o -f redis \
 &&  docker-php-ext-enable redis
 
 # Add Composer
-RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+COPY .gitlab/composer /usr/local/bin/composer
+RUN chmod +x /usr/local/bin/composer
+#RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
 
-RUN apk add nginx npm
+RUN apk add nginx
 COPY gumasev/nginx.conf /etc/nginx/nginx.conf
 
 # Configure PHP-FPM
