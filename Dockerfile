@@ -31,11 +31,11 @@ COPY gumasev/php.ini /etc/php7/conf.d/zzz_custom.ini
 COPY gumasev/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Create app directory and set as working directory
-RUN mkdir /var/www/app
-WORKDIR /var/www/app
+RUN mkdir /var/www
+WORKDIR /var/www
 
 # Copy app source code
-COPY . /var/www/app
+COPY . /var/www
 
 # Install app dependencies
 RUN composer install
