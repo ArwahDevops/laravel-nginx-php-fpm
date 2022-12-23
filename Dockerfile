@@ -1,37 +1,75 @@
-FROM alpine:latest
+FROM php:7.4-fpm-alpine
+LABEL Maintainer="Thien Tran <hello@gsviec.com>" \
+      Description="Lightweight container with Nginx 1.16 & PHP-FPM 7.4 based on Alpine Linux."
 
-# Install packages
-RUN apk --no-cache add php7.4 php7.4-fpm php7.4-mysqli php7.4-json php7.4-openssl php7.4-curl \
-    php7.4-zlib php7.4-xml php7.4-intl php7.4-dom php7.4-xmlreader php7.4-ctype \
-    php7.4-mbstring php7.4-gd nginx supervisor curl php7.4-imagick php7.4-redis php7.4-xdebug \
-    php7.4-opcache php7.4-zip php7.4-pdo php7.4-pdo_mysql php7.4-tokenizer php7.4-fileinfo php7.4-pdo_mysql php7.4-simplexml \
-    php7.4-xmlwriter php7.4-iconv composer php7.4-fileinfo tzdata
+# Add repos
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 
-# Config PHP
-RUN sed -i "s/;date.timezone =.*/date.timezone = Asia\/Jakarta/g" /etc/php7.4/php.ini \
-    && sed -i "s/upload_max_filesize =.*/upload_max_filesize = 250M/g" /etc/php7.4/php.ini \
-    && sed -i "s/memory_limit = 128M/memory_limit = 512M/g" /etc/php7.4/php.ini \
-    && sed -i "s/post_max_size =.*/post_max_size = 250M/g" /etc/php7.4/php.ini \
-    && sed -i "s/user = nobody/user = root/g" /etc/php7.4/php-fpm.d/www.conf \
-    && sed -i "s/group = nobody/group = root/g" /etc/php7.4/php-fpm.d/www.conf \
-    && sed -i "s/listen.owner = nobody/listen.owner = root/g" /etc/php7.4/php-fpm.d/www.conf \
-    && sed -i "s/listen.group = nobody/listen.group = root/g" /etc/php7.4/php-fpm.d/www.conf \
-    && sed -i "s/listen.group = nobody/listen.group = root/g" /etc/php7.4/php-fpm.d/www.conf \
-    && cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime && echo Asia/Jakarta > /etc/timezone \
-    && apk del tzdata
+# Add basics first
+RUN apk update && apk upgrade && apk add \
+	bash curl ca-certificates openssl openssh git nano libxml2-dev tzdata icu-dev openntpd libedit-dev libzip-dev \
+        supervisor aspell-libs aspell-dev autoconf gcc g++ make
 
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN docker-php-ext-install pdo_mysql soap pspell zip pcntl  sockets intl exif simplexml soap xml
 
-# Copy nginx config
-COPY server/nginx.conf /etc/nginx/nginx.conf
-COPY server/upstream.conf /etc/nginx/upstream.conf
+# install redis
+RUN pecl install -o -f redis \
+&&  rm -rf /tmp/pear \
+&&  docker-php-ext-enable redis
+
+# Add Composer
+RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+ARG PSR_VERSION=1.0.0
+ARG PHALCON_VERSION=4.0.5
+ARG PHALCON_EXT_PATH=php7/64bits
+
+RUN set -xe && \
+        # Download PSR, see https://github.com/jbboehr/php-psr
+        curl -LO https://github.com/jbboehr/php-psr/archive/v${PSR_VERSION}.tar.gz && \
+        tar xzf ${PWD}/v${PSR_VERSION}.tar.gz && \
+        # Download Phalcon
+        curl -LO https://github.com/phalcon/cphalcon/archive/v${PHALCON_VERSION}.tar.gz && \
+        tar xzf ${PWD}/v${PHALCON_VERSION}.tar.gz && \
+        docker-php-ext-install -j $(getconf _NPROCESSORS_ONLN) \
+            ${PWD}/php-psr-${PSR_VERSION} \
+            ${PWD}/cphalcon-${PHALCON_VERSION}/build/${PHALCON_EXT_PATH} \
+        && \
+        # Remove all temp files
+        rm -r \
+            ${PWD}/v${PSR_VERSION}.tar.gz \
+            ${PWD}/php-psr-${PSR_VERSION} \
+            ${PWD}/v${PHALCON_VERSION}.tar.gz \
+            ${PWD}/cphalcon-${PHALCON_VERSION} \
+        && \
+        php -m
+
+#COPY docker-phalcon-* /usr/local/bin/
+
+RUN apk add nginx npm
+COPY gumasev/nginx.conf /etc/nginx/nginx.conf
 
 # Configure PHP-FPM
-COPY server/fpm-pool.conf /etc/php7.4/php-fpm.d/my_custom.conf
+COPY gumasev/fpm-pool.conf /etc/php7/php-fpm.d/www.conf
+COPY gumasev/php.ini /etc/php7/conf.d/zzz_custom.ini
 
 # Configure supervisord
-COPY server/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY gumasev/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-EXPOSE 80 443
+# Create app directory and set as working directory
+RUN mkdir /var/www/app
+WORKDIR /var/www/app
+
+# Copy app source code
+COPY . /var/www/app
+
+# Install app dependencies
+RUN composer install
+
+# Expose the port nginx is reachable on
+EXPOSE 8080 9000
+
+# Let supervisord start nginx & php-fpm
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+
+# Configure a healthcheck to validate that everything is up&running
+#HEALTHCHECK --timeout=10s CMD curl --silent --fail http://127.0.0.1:8080/fpm-ping

@@ -1,8 +1,8 @@
 version: "2"
-services: 
+services:
   web:
     build: .
     container_name: laravel-test
     ports:
-        - "80:80"
+        - "80:8080"
         - "443:443"
